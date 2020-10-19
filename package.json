@@ -1,0 +1,13 @@
+{
+  "name": "discord-stonks-bot",
+  "version": "0.0.0",
+  "description": "DiscordStonksBot",
+  "main": "server.js",
+  "author": {
+    "name": ""
+  },
+  "dependencies": {
+    "discord.js": "^12.3.1",
+    "jquery": "^3.5.1"
+  }
+}
