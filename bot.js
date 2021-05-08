@@ -5,12 +5,6 @@ var userMap;
 var general;
 
 
-// Connect to MongoDB cluster
-const MongoClient = require('mongodb').MongoClient;
-const uri = "mongodb+srv://ben:jessie12212!@cluster0.k2jxj.mongodb.net/ben?retryWrites=true&w=majority";
-const mongodbClient = new MongoClient(uri, { useNewUrlParser: true });
-
-
 /**
  * BOT RESPONSE WHEN IT LOADS AKA IS 'ready'
  */
@@ -163,7 +157,7 @@ function chartCommand(arguments, receivedMessage) {
 // Buy
 // arguments[0] = ticker, [1] = amount, [2] (if exists) = leverage
 function buyCommand(arguments, receivedMessage, author) {
-    general.send("Buying " + arguments[1] + " of " + arguments[0]);
+    general.send("Buying " + arguments[1] + " of " + arguments[0] + ". Please wait for 'Purchase Complete' before entering another command.");
     // remove the 'x' in 'x5' for example
     arguments[1] = arguments[1].substr(1);
     console.log("testing substring: " + arguments[1]);
@@ -196,14 +190,14 @@ function buyCommand(arguments, receivedMessage, author) {
                     console.log("arguments[1] " + arguments[1]);
 
                     // Update cash reserve
-                    receivedMessage.channel.send("Total cost of purchase: $" + totalCost);
-                    receivedMessage.channel.send("Balance before: $" + stocks.cash);
+                    receivedMessage.channel.send("Total cost of purchase: $" + totalCost.toFixed(2));
+                    receivedMessage.channel.send("Balance before: $" + parseFloat(stocks.cash).toFixed(2));
 
                     console.log(stocks.cash);
                     console.log(totalCost);
                     stocks.cash = stocks.cash - totalCost;
 
-                    receivedMessage.channel.send("Balance after: $" + stocks.cash);
+                    receivedMessage.channel.send("Balance after: $" + parseFloat(stocks.cash).toFixed(2));
 
                     // Push stock ticker + amount to user arrays
                     // Stock not already in portfolio
@@ -268,19 +262,19 @@ function sellCommand(arguments, receivedMessage, author) {
                         console.log("index of stock: " + i);
 
                         var totalCost = currPrice * arguments[1];
-                        general.send("Sale amount: $" + totalCost);
+                        general.send("Sale amount: $" + totalCost.toFixed(2));
 
                         console.log("currPrice " + currPrice);
                         console.log("arguments[1] " + arguments[1]);
 
                         // Update cash reserve
-                        receivedMessage.channel.send("Balance before: $" + stocks.cash);
+                        receivedMessage.channel.send("Balance before: $" + parseFloat(stocks.cash).toFixed(2));
 
                         console.log(stocks.cash);
                         console.log(totalCost);
                         stocks.cash = stocks.cash + totalCost;
 
-                        receivedMessage.channel.send("Balance after: $" + stocks.cash);
+                        receivedMessage.channel.send("Balance after: $" + parseFloat(stocks.cash).toFixed(2));
 
                         // Find stock and alter amount
                         stocks.amount[i] = stocks.amount[i] - arguments[1];
@@ -317,7 +311,7 @@ function addUser(author) {
 
     // Check if already registered
     if (userMap.has(author)) {
-        general.send(author + " is already registered.");
+        general.send("You are already registered. Use !me command to see your portfolio");
     } else {
         userMap.set(author, portfolio)
         general.send("You have been registered. Starting cash reserve is $50,000 USD");
@@ -327,30 +321,82 @@ function addUser(author) {
 
 // Get user - for '!me' command
 function getUser(author) {
-    // Get user
-    var user = userMap.get(author);
-    console.log("Author: " + author.username);
 
-    console.log(userMap.get(author).cash)
+    // User doesn't exist
+    if (!userMap.has(author)) {
+        general.send("You are not currently registered. Type !play to register yourself.");
 
-    // Show cash reserve
-    general.send("Cash (USD): $" + user.cash);
-
-    if (user.stocks.length === 0) {
-        general.send("Portfolio is currently empty. Buy a stock.");
     } else {
-        general.send("STOCK : UNITS");
-    }
+        // Get user
+        var user = userMap.get(author);
+        console.log("Author: " + author.username);
 
-    var totalPosition = user.cash;
+        console.log(userMap.get(author).cash);
 
-    var i;
-    for (i = 0; i < user.stocks.length; i++) {
+        // Show cash reserve
+        general.send("Cash (USD): $" + user.cash);
+
+        // Print portfolio
+        if (user.stocks.length === 0) {
+            general.send("Portfolio is currently empty. Buy a stock.");
+        } else {
+            general.send("STOCK : UNITS");
+        }
+
+        var totalPosition = user.cash;
+        var i;
+        var ticker;
+        var amount;
+        var list = [];
+        var element = [];
+
+        for (i = 0; i < user.stocks.length; i++) {
+            general.send("Stock: " + user.stocks[i] + " : " + "Amount: " + user.amount[i]);
+            console.log("Stock: " + user.stocks[i]);
+            console.log("Amount: " + user.amount[i]);
+
+            ticker = user.stocks[i];
+            amount = user.amount[i];
+
+            element.push(ticker);
+            element.push(amount);
 
 
-        console.log("Stock: " + user.stocks[i]);
-        general.send(user.stocks[i] + " : " + user.amount[i])
-        console.log("Amount: " + user.amount[i])
+            // GET call to get price of stock.
+            https.get('https://cloud.iexapis.com/stable/stock/' +
+                user.stocks[i] +
+                '/quote?token=pk_dbe7d8fdde6744a6bed42869ba27f111 ',
+                (
+                    resp) => {
+                    let data = '';
+
+                    resp.on('data',
+                        (chunk) => {
+                            data += chunk;
+                        });
+
+                    // Once response is finished, do things.
+                    resp.on('end',
+                        () => {
+                            var currPrice = JSON.parse(data).iexRealtimePrice;
+                            console.log("currPrice inside API call: " + currPrice);
+                            element.push(currPrice);
+                            list.push(element);
+
+                            totalPosition += currPrice * amount;
+                            console.log("total pos: " + totalPosition);
+
+                        });
+
+                    // Error
+                }).on("error",
+                    (err) => {
+                        console.log("error: " + err.message);
+                    });
+        }
+
+        console.log("total pos final: " + totalPosition);
+        general.send("Total Position: " + totalPosition);
     }
 }
 
@@ -369,4 +415,4 @@ function helpCommand(arguments, receivedMessage) {
 };
 
 
-client.login("NzY3NjgyNjA4NDEwMjYzNTYy.X41eJA.6PHO_Tjmj2T35cKpZ_5N8WNx0f8");
+client.login("asdf");
