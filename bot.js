@@ -1,9 +1,9 @@
 const Discord = require('discord.js');
 const client = new Discord.Client();
 const https = require('https');
+const fetch = require("node-fetch");
 var userMap;
 var general;
-
 
 /**
  * BOT RESPONSE WHEN IT LOADS AKA IS 'ready'
@@ -27,11 +27,6 @@ client.on('ready',
         general.send("@everyone I am online.");
         general.send("Type !play to register yourself and begin playing with $50,000 USD, or type !help for a list of my commands.");
 
-        // Attatch image
-        //        const webAttatchment =
-        //            new Discord.MessageAttachment('https://www.devdungeon.com/sites/all/themes/devdungeon2/logo.png');
-        //        general.send(webAttatchment);
-
         // Setting bots activity
         client.user.setActivity("$$$", { type: "MONEY" });
 
@@ -48,9 +43,6 @@ client.on('message',
         if (receivedMessage.author === client.user) {
             return;
         }
-
-        // Send message - Not really needed
-        //receivedMessage.channel.send("Message received from " + receivedMessage.author.toString() + ": " + receivedMessage.content);
 
         // If tagged
         if (receivedMessage.content.includes(client.user.toString())) {
@@ -116,7 +108,7 @@ function stockCommand(arguments, receivedMessage) {
              * .previousClose, .changePercent, .peRatio, .week52High, .week52Low, .ytdChange, .marketCap,
              */
             resp.on('end', () => {
-                var currPrice = JSON.parse(data).iexRealtimePrice;
+                var currPrice = JSON.parse(data).latestPrice;
                 var change = JSON.parse(data).changePercent;
                 var yearHigh = JSON.parse(data).week52High;
                 var yearLow = JSON.parse(data).week52Low;
@@ -142,7 +134,7 @@ function stockCommand(arguments, receivedMessage) {
 
         // Stock details
     } else if (arguments.length == 2 && arguments[1] == ("details")) {
-        receivedMessage.channel.send(arguments[1] + "`current price: `" + JSON.parse(data).iexRealtimePrice + " " + JSON.parse(data).changePercent);
+        receivedMessage.channel.send(arguments[1] + "`current price: `" + JSON.parse(data).latestPrice + " " + JSON.parse(data).changePercent);
 
     } else {
         receivedMessage.channel.send("`It looks like you didn't include the ticker and/or the keyword 'details'. Try again.`");
@@ -182,7 +174,7 @@ function buyCommand(arguments, receivedMessage, author) {
             // Once response is finished, do things.
             resp.on('end',
                 () => {
-                    var currPrice = JSON.parse(data).iexRealtimePrice;
+                    var currPrice = JSON.parse(data).latestPrice;
                     console.log("currPrice inside API call: " + currPrice);
 
                     var totalCost = currPrice * arguments[1];
@@ -251,7 +243,7 @@ function sellCommand(arguments, receivedMessage, author) {
             // Once response is finished, do things.
             resp.on('end',
                 () => {
-                    var currPrice = JSON.parse(data).iexRealtimePrice;
+                    var currPrice = JSON.parse(data).latestPrice;
                     console.log("currPrice inside API call: " + currPrice);
 
                     if (stocks.stocks.includes(arguments[0])) {
@@ -320,7 +312,7 @@ function addUser(author) {
 }
 
 // Get user - for '!me' command
-function getUser(author) {
+async function getUser(author) {
 
     // User doesn't exist
     if (!userMap.has(author)) {
@@ -344,60 +336,33 @@ function getUser(author) {
         }
 
         var totalPosition = user.cash;
-        var i;
-        var ticker;
-        var amount;
-        var list = [];
-        var element = [];
+
+        const results = await Promise.all(user.stocks.map(ticker => getStockPrice(ticker)))
+            .then(function (responses) {
+                return responses;
+            });
+
 
         for (i = 0; i < user.stocks.length; i++) {
-            general.send("Stock: " + user.stocks[i] + " : " + "Amount: " + user.amount[i]);
-            console.log("Stock: " + user.stocks[i]);
-            console.log("Amount: " + user.amount[i]);
+            general.send(user.stocks[i].toUpperCase() + " : " + user.amount[i]);
 
-            ticker = user.stocks[i];
-            amount = user.amount[i];
-
-            element.push(ticker);
-            element.push(amount);
-
-
-            // GET call to get price of stock.
-            https.get('https://cloud.iexapis.com/stable/stock/' +
-                user.stocks[i] +
-                '/quote?token=pk_dbe7d8fdde6744a6bed42869ba27f111 ',
-                (
-                    resp) => {
-                    let data = '';
-
-                    resp.on('data',
-                        (chunk) => {
-                            data += chunk;
-                        });
-
-                    // Once response is finished, do things.
-                    resp.on('end',
-                        () => {
-                            var currPrice = JSON.parse(data).iexRealtimePrice;
-                            console.log("currPrice inside API call: " + currPrice);
-                            element.push(currPrice);
-                            list.push(element);
-
-                            totalPosition += currPrice * amount;
-                            console.log("total pos: " + totalPosition);
-
-                        });
-
-                    // Error
-                }).on("error",
-                    (err) => {
-                        console.log("error: " + err.message);
-                    });
+        }
+        for (i = 0; i < results.length; i++) {
+            totalPosition += results[i] * user.amount[i];
         }
 
-        console.log("total pos final: " + totalPosition);
-        general.send("Total Position: " + totalPosition);
+        general.send("Total Position: $" + totalPosition.toFixed(2));
     }
+}
+
+function getStockPrice(ticker) {
+
+    // return GET result
+    return fetch('https://cloud.iexapis.com/stable/stock/' +
+        ticker +
+        '/quote/latestPrice?token=pk_dbe7d8fdde6744a6bed42869ba27f111 ')
+        .then(res => res.json());
+
 }
 
 // Help command - for '!help' command
@@ -415,4 +380,4 @@ function helpCommand(arguments, receivedMessage) {
 };
 
 
-client.login("asdf");
+client.login("NzY3NjgyNjA4NDEwMjYzNTYy.X41eJA.A0Mr0_XqSYcANPWwAE7KTUWgJPo");
