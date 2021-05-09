@@ -87,6 +87,8 @@ function processCommand(receivedMessage) {
         giveMoney(receivedMessage.author);
     else if (primaryCommand == "leaderboard")
         leaderboard(receivedMessage);
+    else if (primaryCommand == "sourcecode")
+        sourcecode(receivedMessage);
     else {
         receivedMessage.channel.send("Not a command, try again, or type !help");
     }
@@ -173,44 +175,50 @@ async function buyCommand(arguments, receivedMessage, author) {
 
     // Check if user exists before executing command
     if (userMap.has(author)) {
-        receivedMessage.channel.send("Buying " + arguments[1] + " of " + arguments[0] +
-            ".\n```diff\n- Please wait for 'Purchase Complete'!\n```");
-        // remove the 'x' in 'x5' for example
-        arguments[1] = arguments[1].substr(1);
+        try {
+            receivedMessage.channel.send("Buying " + arguments[1] + " of " + arguments[0] +
+                ".\n```diff\n- Please wait for 'Purchase Complete'!\n```");
+            // remove the 'x' in 'x5' for example
+            arguments[1] = arguments[1].substr(1);
 
-        var stocks = userMap.get(author);
+            var stocks = userMap.get(author);
 
-        // GET price of stock
-        const currPrice = await getStockPrice(arguments[0])
-            .then(response => {
-                return response;
-            });
+            // GET price of stock
+            const currPrice = await getStockPrice(arguments[0])
+                .then(response => {
+                    return response;
+                });
 
-        let totalCost = currPrice * arguments[1];
+            let totalCost = currPrice * arguments[1];
 
-        // Update cash reserve
-        receivedMessage.channel.send("```\nTotal cost of purchase: $" + totalCost.toFixed(2) + "\n```");
-        receivedMessage.channel.send("```\nBalance before: $" + parseFloat(stocks.cash).toFixed(2) + "\n```");
+            // Update cash reserve
+            receivedMessage.channel.send("```\nTotal cost of purchase: $" + totalCost.toFixed(2) + "\n```");
+            receivedMessage.channel.send("```\nBalance before: $" + parseFloat(stocks.cash).toFixed(2) + "\n```");
 
-        stocks.cash = stocks.cash - totalCost;
+            stocks.cash = stocks.cash - totalCost;
 
-        receivedMessage.channel.send("```\nBalance after: $" + parseFloat(stocks.cash).toFixed(2) + "\n```");
+            receivedMessage.channel.send("```\nBalance after: $" + parseFloat(stocks.cash).toFixed(2) + "\n```");
 
-        // Push stock ticker + amount to user arrays
-        // Stock not already in portfolio
-        if (!stocks.stocks.includes(arguments[0])) {
-            stocks.stocks.push(arguments[0]);
-            stocks.amount.push(arguments[1]);
+            // Push stock ticker + amount to user arrays
+            // Stock not already in portfolio
+            if (!stocks.stocks.includes(arguments[0])) {
+                stocks.stocks.push(arguments[0]);
+                stocks.amount.push(arguments[1]);
 
-            // Stock already in portfolio, increment
-        } else {
-            var i = stocks.stocks.indexOf(arguments[0]);
-            var initial = parseInt(stocks.amount[i]);
-            var additional = parseInt(arguments[1]);
-            stocks.amount[i] = initial + additional;
+                // Stock already in portfolio, increment
+            } else {
+                var i = stocks.stocks.indexOf(arguments[0]);
+                var initial = parseInt(stocks.amount[i]);
+                var additional = parseInt(arguments[1]);
+                stocks.amount[i] = initial + additional;
+            }
+
+            receivedMessage.channel.send("```fix\nPurchase complete.\n```");
+
+        } catch (err) {
+            console.log(err);
+            receivedMessage.channel.send("That stock does not exist");
         }
-
-        receivedMessage.channel.send("```fix\nPurchase complete.\n```");
     } else {
         receivedMessage.channel.send("You have not registered yet. Type !play");
     }
@@ -223,47 +231,53 @@ async function sellCommand(arguments, receivedMessage, author) {
 
     // Check if user exists before executing command
     if (userMap.has(author)) {
-        receivedMessage.channel.send("Selling " + arguments[1] + " of " + arguments[0] +
-            ".\n```diff\n- Please wait for 'Sale Complete'!\n```");
-        // remove the 'x' in 'x5' for example
-        arguments[1] = arguments[1].substr(1);
+        try {
+            receivedMessage.channel.send("Selling " + arguments[1] + " of " + arguments[0] +
+                ".\n```diff\n- Please wait for 'Sale Complete'!\n```");
+            // remove the 'x' in 'x5' for example
+            arguments[1] = arguments[1].substr(1);
 
-        var stocks = userMap.get(author);
+            var stocks = userMap.get(author);
 
-        if (stocks.stocks.includes(arguments[0])) {
+            if (stocks.stocks.includes(arguments[0])) {
 
-            // GET call to get price of stock.
-            const currPrice = await getStockPrice(arguments[0])
-                .then(response => {
-                    return response;
-                });
+                // GET call to get price of stock.
+                const currPrice = await getStockPrice(arguments[0])
+                    .then(response => {
+                        return response;
+                    });
 
-            // get index of stock
-            var i = stocks.stocks.indexOf(arguments[0]);
+                // get index of stock
+                var i = stocks.stocks.indexOf(arguments[0]);
 
-            var totalCost = parseFloat(currPrice) * arguments[1];
-            receivedMessage.channel.send("```\nSale amount: $" + totalCost.toFixed(2) + "\n```");
+                var totalCost = parseFloat(currPrice) * arguments[1];
+                receivedMessage.channel.send("```\nSale amount: $" + totalCost.toFixed(2) + "\n```");
 
-            // Update cash reserve
-            receivedMessage.channel.send("```\nBalance before: $" + parseFloat(stocks.cash).toFixed(2) + "\n```");
-            // Update cash
-            stocks.cash = stocks.cash + totalCost;
-            // Show balance
-            receivedMessage.channel.send("```\nBalance after: $" + parseFloat(stocks.cash).toFixed(2) + "\n```");
+                // Update cash reserve
+                receivedMessage.channel.send("```\nBalance before: $" + parseFloat(stocks.cash).toFixed(2) + "\n```");
+                // Update cash
+                stocks.cash = stocks.cash + totalCost;
+                // Show balance
+                receivedMessage.channel.send("```\nBalance after: $" + parseFloat(stocks.cash).toFixed(2) + "\n```");
 
-            // Find stock and alter amount
-            stocks.amount[i] -= arguments[1];
+                // Find stock and alter amount
+                stocks.amount[i] -= arguments[1];
 
-            if (stocks.amount[i] == 0) {
-                stocks.stocks.splice(i, 1);
-                stocks.amount.splice(i, 1);
+                if (stocks.amount[i] == 0) {
+                    stocks.stocks.splice(i, 1);
+                    stocks.amount.splice(i, 1);
+                }
+
+                receivedMessage.channel.send("```fix\nSale complete.\n```");
+
+            } else {
+                receivedMessage.channel.send("No such stock exists in your portfolio.")
             }
 
-        } else {
-            receivedMessage.channel.send("No such stock exists in your portfolio.")
+        } catch (err) {
+            console.log(err);
+            receivedMessage.channel.send("That stock does not exist");
         }
-
-        receivedMessage.channel.send("```fix\nSale complete.\n```");
     } else {
         receivedMessage.channel.send("You have not registered yet. Type !play");
     }
@@ -271,9 +285,10 @@ async function sellCommand(arguments, receivedMessage, author) {
 
 // Give money to user
 function giveMoney(author) {
-    var portfolio = userMap.get(author);
-    portfolio.cash = 1000;
-    userMap.set(author, portfolio)
+    let portfolio = userMap.get(author);
+    console.log(portfolio.cash);
+    portfolio.cash = parseFloat(portfolio.cash) + 25000;
+    console.log(portfolio.cash);
 }
 
 // !play command
@@ -291,7 +306,7 @@ function addUser(author, receivedMessage) {
         receivedMessage.channel.send("You are already registered. Use !me command to see your portfolio");
     } else {
         userMap.set(author, portfolio)
-        receivedMessage.channel.send("You have been registered. Starting cash reserve is $50,000 USD");
+        receivedMessage.channel.send("You have been registered. Starting cash reserve is $50,000 USD. Spend wisely.");
     }
 
 }
@@ -306,8 +321,12 @@ async function getUser(author, receivedMessage) {
         // Get user
         var user = userMap.get(author);
 
-        // Show cash reserve
-        receivedMessage.channel.send("```\nCash (USD): $" + user.cash.toFixed(2) + "\n```");
+        try {
+            // Show cash reserve
+            receivedMessage.channel.send("```\nCash (USD): $" + user.cash.toFixed(2) + "\n```");
+        } catch (err) {
+            receivedMessage.channel.send("```\nCash (USD): $" + user.cash + "\n```");
+        }
 
         // store total position
         var totalPosition = user.cash;
@@ -318,7 +337,7 @@ async function getUser(author, receivedMessage) {
             // send total position
             receivedMessage.channel.send("```\nTotal Position: $" + totalPosition + "\n```");
         } else {
-            receivedMessage.channel.send("```\nStock : Units : Value\n```");
+            receivedMessage.channel.send("```\nStock : Units : Value : Profit/Loss\n```");
 
             // Wait for GET request to complete in a Promise
             const results = await Promise.all(user.stocks.map(ticker => getStockPrice(ticker)))
@@ -328,7 +347,8 @@ async function getUser(author, receivedMessage) {
 
             // Print out stocks : units : $value
             for (i = 0; i < user.stocks.length; i++) {
-                receivedMessage.channel.send("```\n" + user.stocks[i].toUpperCase() + " : " + user.amount[i] + " : $" + (parseFloat(results[i] * user.amount[i]).toFixed(2)) + "\n```");
+                receivedMessage.channel.send("```\n" + user.stocks[i].toUpperCase() + " : " + user.amount[i] +
+                    " : $" + (parseFloat(results[i] * user.amount[i]).toFixed(2)) + " : $ not done" + "\n```");
 
             }
             // Tally total position
@@ -350,23 +370,25 @@ function getStockPrice(ticker) {
         .then(res => res.json());
 }
 
-// Top 10 leaderboard
+// !leaderboard - Top 10 leaderboard
 function leaderboard(receivedMessage) {
     if (userMap.size > 0) {
+        // Iterator
         const it = userMap.entries();
-
         let result = it.next().value;
-        console.log(result);
 
+        // Iterate and print
         while (!result.done) {
             receivedMessage.channel.send("```fix\nUser: " + result[0].username +
                 "\nCash: $" + result[1].cash.toFixed(2) + "```\n");
 
             for (var i = 0; i < result[1].stocks.length; i++) {
                 receivedMessage.channel.send("```fix\nStock: " + result[1].stocks[i] +
-                    "\nUnits: " + result[1].amount[i] + "\n```");
+                    "\nUnits: " + result[1].amount[i] +
+                    "\nTotal stock value: not done yet :^)" +
+                    "\n```");
             }
-
+            receivedMessage.channel.send("```fix\nTotal value: not yet done " + "```\n");
             result = it.next();
         }
 
@@ -375,8 +397,8 @@ function leaderboard(receivedMessage) {
     }
 }
 
-function portfolioStringBuilder() {
-
+function sourcecode(receivedMessage) {
+    receivedMessage.channel.send("https://github.com/bwhitely/DiscordStockBot/blob/main/bot.js");
 }
 
 // Help command - for '!help' command
@@ -387,14 +409,16 @@ function helpCommand(arguments, receivedMessage) {
         receivedMessage.channel.send("**Here is the list of my commands:**\n" +
             "```css\n[!play] - Registers yourself to play the game.\n```" +
             "```css\n[!help] - Provides my list of commands.\n```" +
-            "```css\n[!stock ticker] - Provides current price and daily % change for your chosen stock.\n```" +
-            "```css\n[!stock ticker] details - Provides current price, daily % and extra details for your chosen stock.\n```" +
-            "```css\n[!buy ticker xUnits] - Buys the specified amount of your chosen stock.\n```" +
-            "```css\n[!sell stockTicker xUnits] - Sells the specified amount of your chosen stock.\n```" +
-            "```css\n[!chart stockTicker] - Provides a screenshot of the intraday stock history\n```" +
-            "```css\n[!leaderboard] - **NOT ORDERED** Lists the top 10 users in descending value of portfolio\n```");
+            "```css\n[!stock ticker] - Provides current price and daily % change for your chosen stock. i.e.: !stock AAPL\n```" +
+            "```css\n[!stock ticker details] - Provides current price, daily % and extra details for your chosen stock. i.e.: !stock AMZN details\n```" +
+            "```css\n[!buy ticker xUnits] - Buys the specified amount of your chosen stock. i.e.: !buy GME x25\n```" +
+            "```css\n[!sell ticker xUnits] - Sells the specified amount of your chosen stock. i.e.: !sell AMC x100\n```" +
+            "```css\n[!chart ticker] - Provides a screenshot of the intraday stock history. i.e.: !chart TSLA\n```" +
+            "```css\n[!money] - Gives a user $25,000 USD for no reason\n```" +
+            "```css\n[!leaderboard] - **NOT ORDERED** Lists the top 10 users in descending value of portfolio\n```" +
+            "```css\n[!sourcecode] - Link to the source code\n```");
     }
 };
 
 // Discord token
-client.login("redac");
+client.login("redacted");
