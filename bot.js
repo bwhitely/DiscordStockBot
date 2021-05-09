@@ -2,12 +2,12 @@ const Discord = require('discord.js');
 const client = new Discord.Client();
 const https = require('https');
 const fetch = require("node-fetch");
+const puppeteer = require('puppeteer');
 var userMap;
 var general;
 
-/**
- * BOT RESPONSE WHEN IT LOADS AKA IS 'ready'
- */
+
+// BOT on ready
 client.on('ready',
     () => {
         // List servers the bot is connected to
@@ -28,15 +28,15 @@ client.on('ready',
         general.send("Type !play to register yourself and begin playing with $50,000 USD, or type !help for a list of my commands.");
 
         // Setting bots activity
-        client.user.setActivity("$$$", { type: "MONEY" });
+        client.user.setPresence({ activity: { name: '$$$' }, status: 'online' })
+            .then(console.log)
+            .catch(console.error);
 
         // Map for user data
         userMap = new Map();
     });
 
-/**
- * BOT RESPONDING TO A MESSAGE
- */
+// RESPOND to message
 client.on('message',
     (receivedMessage) => {
         // Prevent bot from responding to its own messages
@@ -147,8 +147,20 @@ function stockCommand(arguments, receivedMessage) {
 };
 
 // Chart command
-function chartCommand(arguments, receivedMessage) {
+async function chartCommand(arguments, receivedMessage) {
+    // Launch browser
+    const browser = await puppeteer.launch();
 
+    const page = await browser.newPage();
+    // URL
+    await page.goto("https://www.google.com/search?q=$" + arguments);
+
+    // Screenshot
+    let screenshot = await page.screenshot();
+
+    await browser.close();
+
+    receivedMessage.channel.send({ files: [screenshot] });
 }
 
 // !buy
@@ -351,4 +363,4 @@ function helpCommand(arguments, receivedMessage) {
 };
 
 // Discord token
-client.login("redacted");
+client.login("NzY3NjgyNjA4NDEwMjYzNTYy.X41eJA.y4zhmvBXGm3u75733ZHgHsCp3eM");
