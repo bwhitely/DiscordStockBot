@@ -1,6 +1,7 @@
 const Discord = require('discord.js');
 const client = new Discord.Client();
 const https = require('https');
+const { map } = require('jquery');
 const fetch = require("node-fetch");
 const puppeteer = require('puppeteer');
 var userMap;
@@ -84,6 +85,8 @@ function processCommand(receivedMessage) {
         sellCommand(arguments, receivedMessage, receivedMessage.author);
     else if (primaryCommand === "money")
         giveMoney(receivedMessage.author);
+    else if (primaryCommand == "leaderboard")
+        leaderboard(receivedMessage);
     else {
         receivedMessage.channel.send("Not a command, try again, or type !help");
     }
@@ -148,6 +151,7 @@ function stockCommand(arguments, receivedMessage) {
 
 // Chart command
 async function chartCommand(arguments, receivedMessage) {
+    receivedMessage.channel.send("```diff\n+ ...Loading... +\n```");
     // Launch browser
     const browser = await puppeteer.launch();
 
@@ -160,7 +164,7 @@ async function chartCommand(arguments, receivedMessage) {
 
     await browser.close();
 
-    receivedMessage.channel.send({ files: [screenshot] });
+    receivedMessage.channel.send("```fix\n1-Day History for: " + arguments + "\n```", { files: [screenshot] });
 }
 
 // !buy
@@ -182,7 +186,7 @@ async function buyCommand(arguments, receivedMessage, author) {
                 return response;
             });
 
-        var totalCost = currPrice * arguments[1];
+        let totalCost = currPrice * arguments[1];
 
         // Update cash reserve
         receivedMessage.channel.send("```\nTotal cost of purchase: $" + totalCost.toFixed(2) + "\n```");
@@ -337,6 +341,7 @@ async function getUser(author, receivedMessage) {
     }
 }
 
+// GET stock price
 function getStockPrice(ticker) {
     // return GET result
     return fetch('https://cloud.iexapis.com/stable/stock/' +
@@ -345,20 +350,33 @@ function getStockPrice(ticker) {
         .then(res => res.json());
 }
 
+// Top 10 leaderboard
+function leaderboard(receivedMessage) {
+    if (userMap.size > 0) {
+        receivedMessage.channel.send("```\nTop 10!\n```");
+        //let leaders = [];
+        let leaders = new Map([...userMap.entries()].sort());
+        console.log(leaders);
+
+    } else {
+        receivedMessage.channel.send("```\nThere are no users registered!\n```");
+    }
+}
+
 // Help command - for '!help' command
 function helpCommand(arguments, receivedMessage) {
     if (arguments.length > 0) {
         receivedMessage.channel.send("It looks like you might need help with " + arguments);
     } else {
         receivedMessage.channel.send("**Here is the list of my commands:**\n" +
-            "```\n" +
-            "!play - Registers yourself to play the game.\n" +
-            "!help - Provides my list of commands.\n" +
-            "!stock {stockTicker} - Provides current price and daily % change for your chosen stock.\n" +
-            "!stock {stockTicker} details - Provides current price, daily % and extra details for your chosen stock.\n" +
-            "!buy {stockTicker} {xAmount} - Buys the specified amount of your chosen stock.\n" +
-            "!sell {stockTicker} {xAmount} - Sells the specified amount of your chosen stock.\n" +
-            "```");
+            "```css\n[!play] - Registers yourself to play the game.\n```" +
+            "```css\n[!help] - Provides my list of commands.\n```" +
+            "```css\n[!stock ticker] - Provides current price and daily % change for your chosen stock.\n```" +
+            "```css\n[!stock ticker] details - Provides current price, daily % and extra details for your chosen stock.\n```" +
+            "```css\n[!buy ticker xUnits] - Buys the specified amount of your chosen stock.\n```" +
+            "```css\n[!sell stockTicker xUnits] - Sells the specified amount of your chosen stock.\n```" +
+            "```css\n[!chart stockTicker] - Provides a screenshot of the intraday stock history\n```" +
+            "```css\n[!leaderboard] - **NOT WORKING** Lists the top 10 users in descending value of portfolio\n```");
     }
 };
 
