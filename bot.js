@@ -174,7 +174,7 @@ async function buyCommand(arguments, receivedMessage, author) {
     // Check if user exists before executing command
     if (userMap.has(author)) {
         receivedMessage.channel.send("Buying " + arguments[1] + " of " + arguments[0] +
-            ".\n```\nPlease wait for 'Purchase Complete' before entering another command.\n```");
+            ".\n```diff\n- Please wait for 'Purchase Complete'!\n```");
         // remove the 'x' in 'x5' for example
         arguments[1] = arguments[1].substr(1);
 
@@ -224,7 +224,7 @@ async function sellCommand(arguments, receivedMessage, author) {
     // Check if user exists before executing command
     if (userMap.has(author)) {
         receivedMessage.channel.send("Selling " + arguments[1] + " of " + arguments[0] +
-            ".\n```\nPlease wait for 'Sale Complete' before entering another command.\n```");
+            ".\n```diff\n- Please wait for 'Sale Complete'!\n```");
         // remove the 'x' in 'x5' for example
         arguments[1] = arguments[1].substr(1);
 
@@ -353,14 +353,30 @@ function getStockPrice(ticker) {
 // Top 10 leaderboard
 function leaderboard(receivedMessage) {
     if (userMap.size > 0) {
-        receivedMessage.channel.send("```\nTop 10!\n```");
-        //let leaders = [];
-        let leaders = new Map([...userMap.entries()].sort());
-        console.log(leaders);
+        const it = userMap.entries();
+
+        let result = it.next().value;
+        console.log(result);
+
+        while (!result.done) {
+            receivedMessage.channel.send("```fix\nUser: " + result[0].username +
+                "\nCash: $" + result[1].cash.toFixed(2) + "```\n");
+
+            for (var i = 0; i < result[1].stocks.length; i++) {
+                receivedMessage.channel.send("```fix\nStock: " + result[1].stocks[i] +
+                    "\nUnits: " + result[1].amount[i] + "\n```");
+            }
+
+            result = it.next();
+        }
 
     } else {
         receivedMessage.channel.send("```\nThere are no users registered!\n```");
     }
+}
+
+function portfolioStringBuilder() {
+
 }
 
 // Help command - for '!help' command
@@ -376,9 +392,9 @@ function helpCommand(arguments, receivedMessage) {
             "```css\n[!buy ticker xUnits] - Buys the specified amount of your chosen stock.\n```" +
             "```css\n[!sell stockTicker xUnits] - Sells the specified amount of your chosen stock.\n```" +
             "```css\n[!chart stockTicker] - Provides a screenshot of the intraday stock history\n```" +
-            "```css\n[!leaderboard] - **NOT WORKING** Lists the top 10 users in descending value of portfolio\n```");
+            "```css\n[!leaderboard] - **NOT ORDERED** Lists the top 10 users in descending value of portfolio\n```");
     }
 };
 
 // Discord token
-client.login("redacted");
+client.login("redac");
