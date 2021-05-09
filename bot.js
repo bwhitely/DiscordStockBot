@@ -380,4 +380,4 @@ function helpCommand(arguments, receivedMessage) {
 };
 
 
-client.login("NzY3NjgyNjA4NDEwMjYzNTYy.X41eJA.A0Mr0_XqSYcANPWwAE7KTUWgJPo");
+client.login("redacted");
