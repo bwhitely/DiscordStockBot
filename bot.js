@@ -148,140 +148,91 @@ function chartCommand(arguments, receivedMessage) {
 
 // Buy
 // arguments[0] = ticker, [1] = amount, [2] (if exists) = leverage
-function buyCommand(arguments, receivedMessage, author) {
-    general.send("Buying " + arguments[1] + " of " + arguments[0] + ". Please wait for 'Purchase Complete' before entering another command.");
+async function buyCommand(arguments, receivedMessage, author) {
+    general.send("Buying " + arguments[1] + " of " + arguments[0] + ". \nPlease wait for 'Purchase Complete' before entering another command.");
     // remove the 'x' in 'x5' for example
     arguments[1] = arguments[1].substr(1);
     console.log("testing substring: " + arguments[1]);
 
-    // NEED TO CHANGE TO MONGODB
     var stocks = userMap.get(author);
 
-    //TODO - probably need to move these API calls into a separate function.
-    // GET call to get price of stock.
-    https.get('https://cloud.iexapis.com/stable/stock/' +
-        arguments[0] +
-        '/quote?token=pk_dbe7d8fdde6744a6bed42869ba27f111 ',
-        (
-            resp) => {
-            let data = '';
+    // GET price of stock
+    const currPrice = await getStockPrice(arguments[0])
+        .then(response => {
+            return response;
+        });
 
-            resp.on('data',
-                (chunk) => {
-                    data += chunk;
-                });
+    var totalCost = currPrice * arguments[1];
+    console.log("currPrice " + currPrice);
+    console.log("arguments[1] " + arguments[1]);
 
-            // Once response is finished, do things.
-            resp.on('end',
-                () => {
-                    var currPrice = JSON.parse(data).latestPrice;
-                    console.log("currPrice inside API call: " + currPrice);
+    // Update cash reserve
+    receivedMessage.channel.send("Total cost of purchase: $" + totalCost.toFixed(2));
+    receivedMessage.channel.send("Balance before: $" + parseFloat(stocks.cash).toFixed(2));
 
-                    var totalCost = currPrice * arguments[1];
-                    console.log("currPrice " + currPrice);
-                    console.log("arguments[1] " + arguments[1]);
+    console.log(stocks.cash);
+    console.log(totalCost);
+    stocks.cash = stocks.cash - totalCost;
 
-                    // Update cash reserve
-                    receivedMessage.channel.send("Total cost of purchase: $" + totalCost.toFixed(2));
-                    receivedMessage.channel.send("Balance before: $" + parseFloat(stocks.cash).toFixed(2));
+    receivedMessage.channel.send("Balance after: $" + parseFloat(stocks.cash).toFixed(2));
 
-                    console.log(stocks.cash);
-                    console.log(totalCost);
-                    stocks.cash = stocks.cash - totalCost;
+    // Push stock ticker + amount to user arrays
+    // Stock not already in portfolio
+    if (!stocks.stocks.includes(arguments[0])) {
+        stocks.stocks.push(arguments[0]);
+        stocks.amount.push(arguments[1]);
 
-                    receivedMessage.channel.send("Balance after: $" + parseFloat(stocks.cash).toFixed(2));
+        // Stock already in portfolio, increment
+    } else {
+        var i = stocks.stocks.indexOf(arguments[0]);
+        var initial = parseInt(stocks.amount[i]);
+        var additional = parseInt(arguments[1]);
+        stocks.amount[i] = initial + additional;
+    }
 
-                    // Push stock ticker + amount to user arrays
-                    // Stock not already in portfolio
-                    if (!stocks.stocks.includes(arguments[0])) {
-                        stocks.stocks.push(arguments[0]);
-                        stocks.amount.push(arguments[1]);
-
-                        // Stock already in portfolio, increment
-                    } else {
-                        var i = stocks.stocks.indexOf(arguments[0]);
-                        var initial = parseInt(stocks.amount[i]);
-                        var additional = parseInt(arguments[1]);
-                        stocks.amount[i] = initial + additional;
-                    }
-
-                    general.send("Purchase complete.");
-                });
-            // Error
-        }).on("error",
-            (err) => {
-                console.log("error: " + err.message);
-            });
+    general.send("Purchase complete.");
 }
 
 
 // Sell
 // arguments[0] = ticker, [1] = amount
-function sellCommand(arguments, receivedMessage, author) {
-    general.send("Selling " + arguments[1] + " of " + arguments[0]);
+async function sellCommand(arguments, receivedMessage, author) {
+    general.send("Selling " + arguments[1] + " of " + arguments[0] + ".\nPlease wait for 'Sale Complete' before entering another command.");
     // remove the 'x' in 'x5' for example
     arguments[1] = arguments[1].substr(1);
     console.log("testing substring: " + arguments[1]);
 
-    // NEED TO CHANGE TO MONGODB
     var stocks = userMap.get(author);
 
-    //TODO - probably need to move these API calls into a separate function.
-    // GET call to get price of stock.
-    https.get('https://cloud.iexapis.com/stable/stock/' +
-        arguments[0] +
-        '/quote?token=pk_dbe7d8fdde6744a6bed42869ba27f111 ',
-        (
-            resp) => {
-            let data = '';
+    if (stocks.stocks.includes(arguments[0])) {
 
-            resp.on('data',
-                (chunk) => {
-                    data += chunk;
-                });
-
-            // Once response is finished, do things.
-            resp.on('end',
-                () => {
-                    var currPrice = JSON.parse(data).latestPrice;
-                    console.log("currPrice inside API call: " + currPrice);
-
-                    if (stocks.stocks.includes(arguments[0])) {
-
-                        // get index of stock
-                        var i = stocks.stocks.indexOf(arguments[0]);
-
-                        console.log("index of stock: " + i);
-
-                        var totalCost = currPrice * arguments[1];
-                        general.send("Sale amount: $" + totalCost.toFixed(2));
-
-                        console.log("currPrice " + currPrice);
-                        console.log("arguments[1] " + arguments[1]);
-
-                        // Update cash reserve
-                        receivedMessage.channel.send("Balance before: $" + parseFloat(stocks.cash).toFixed(2));
-
-                        console.log(stocks.cash);
-                        console.log(totalCost);
-                        stocks.cash = stocks.cash + totalCost;
-
-                        receivedMessage.channel.send("Balance after: $" + parseFloat(stocks.cash).toFixed(2));
-
-                        // Find stock and alter amount
-                        stocks.amount[i] = stocks.amount[i] - arguments[1];
-
-                    } else {
-                        general.send("No such stock exists in your portfolio.")
-                    }
-
-                    general.send("Sale complete.");
-                });
-            // Error
-        }).on("error",
-            (err) => {
-                console.log("error: " + err.message);
+        // GET call to get price of stock.
+        const currPrice = await getStockPrice(arguments[0])
+            .then(response => {
+                return response;
             });
+
+        // get index of stock
+        var i = stocks.stocks.indexOf(arguments[0]);
+
+        var totalCost = parseFloat(currPrice) * arguments[1];
+        general.send("Sale amount: $" + totalCost.toFixed(2));
+
+        // Update cash reserve
+        receivedMessage.channel.send("Balance before: $" + parseFloat(stocks.cash).toFixed(2));
+        // Update cash
+        stocks.cash = stocks.cash + totalCost;
+        // Show balance
+        receivedMessage.channel.send("Balance after: $" + parseFloat(stocks.cash).toFixed(2));
+
+        // Find stock and alter amount
+        stocks.amount[i] = stocks.amount[i] - arguments[1];
+
+    } else {
+        general.send("No such stock exists in your portfolio.")
+    }
+
+    general.send("Sale complete.");
 }
 
 // Give money to user
@@ -313,7 +264,6 @@ function addUser(author) {
 
 // Get user - for '!me' command
 async function getUser(author) {
-
     // User doesn't exist
     if (!userMap.has(author)) {
         general.send("You are not currently registered. Type !play to register yourself.");
@@ -331,38 +281,37 @@ async function getUser(author) {
         // Print portfolio
         if (user.stocks.length === 0) {
             general.send("Portfolio is currently empty. Buy a stock.");
-        } else {
-            general.send("STOCK : UNITS");
         }
 
+        // store total position
         var totalPosition = user.cash;
 
+        // Wait for GET request to complete in a Promise
         const results = await Promise.all(user.stocks.map(ticker => getStockPrice(ticker)))
             .then(function (responses) {
                 return responses;
             });
 
-
+        // Print out stocks : units
         for (i = 0; i < user.stocks.length; i++) {
-            general.send(user.stocks[i].toUpperCase() + " : " + user.amount[i]);
+            general.send(user.stocks[i].toUpperCase() + " : " + user.amount[i] + " : $" + (results[i] * user.amount[i]));
 
         }
+        // Tally total position
         for (i = 0; i < results.length; i++) {
             totalPosition += results[i] * user.amount[i];
         }
-
+        // send total position
         general.send("Total Position: $" + totalPosition.toFixed(2));
     }
 }
 
 function getStockPrice(ticker) {
-
     // return GET result
     return fetch('https://cloud.iexapis.com/stable/stock/' +
         ticker +
         '/quote/latestPrice?token=pk_dbe7d8fdde6744a6bed42869ba27f111 ')
         .then(res => res.json());
-
 }
 
 // Help command - for '!help' command
