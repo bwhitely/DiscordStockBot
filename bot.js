@@ -363,4 +363,4 @@ function helpCommand(arguments, receivedMessage) {
 };
 
 // Discord token
-client.login("NzY3NjgyNjA4NDEwMjYzNTYy.X41eJA.y4zhmvBXGm3u75733ZHgHsCp3eM");
+client.login("redacted");
