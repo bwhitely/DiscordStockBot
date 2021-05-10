@@ -6,6 +6,7 @@ const fetch = require("node-fetch");
 const puppeteer = require('puppeteer');
 var userMap;
 var general;
+var stonks;
 
 
 // BOT on ready
@@ -24,8 +25,10 @@ client.on('ready',
 
         // set General channel to general
         general = client.channels.cache.get("416728981132541954");
+        // set stonks channel to stonks-bot-test
+        stonks = client.channels.cache.get("841200240077439017");
+
         // send message to General channel
-        general.send("@everyone I am online.");
         general.send("Type !play to register yourself and begin playing with $50,000 USD, or type !help for a list of my commands.");
 
         // Setting bots activity
@@ -69,28 +72,39 @@ function processCommand(receivedMessage) {
     console.log("Arguments: " + arguments);
 
     // Commands
-    if (primaryCommand === "help")
-        helpCommand(arguments, receivedMessage);
-    else if (primaryCommand === "play")
-        addUser(receivedMessage.author, receivedMessage);
-    else if (primaryCommand === "me")
-        getUser(receivedMessage.author, receivedMessage);
-    else if (primaryCommand === "stock")
-        stockCommand(arguments, receivedMessage);
-    else if (primaryCommand === "chart")
-        chartCommand(arguments, receivedMessage);
-    else if (primaryCommand === "buy")
-        buyCommand(arguments, receivedMessage, receivedMessage.author);
-    else if (primaryCommand === "sell")
-        sellCommand(arguments, receivedMessage, receivedMessage.author);
-    else if (primaryCommand === "money")
-        giveMoney(receivedMessage.author);
-    else if (primaryCommand == "leaderboard")
-        leaderboard(receivedMessage);
-    else if (primaryCommand == "sourcecode")
-        sourcecode(receivedMessage);
-    else {
-        receivedMessage.channel.send("Not a command, try again, or type !help");
+    switch (primaryCommand) {
+        case "help":
+            helpCommand(arguments, receivedMessage);
+            break;
+        case "play":
+            addUser(receivedMessage.author, receivedMessage);
+            break;
+        case "me":
+            getUser(receivedMessage.author, receivedMessage);
+            break;
+        case "stock":
+            stockCommand(arguments, receivedMessage);
+            break;
+        case "chart":
+            chartCommand(arguments, receivedMessage);
+            break;
+        case "buy":
+            buyCommand(arguments, receivedMessage, receivedMessage.author);
+            break;
+        case "sell":
+            sellCommand(arguments, receivedMessage, receivedMessage.author);
+            break;
+        case "money":
+            giveMoney(receivedMessage.author);
+            break;
+        case "leaderboard":
+            leaderboard(receivedMessage);
+            break;
+        case "sourcecode":
+            sourcecode(receivedMessage);
+            break;
+        default:
+            receivedMessage.channel.send("Not a command, try again, or type !help");
     }
 };
 
@@ -248,9 +262,19 @@ async function sellCommand(arguments, receivedMessage, author) {
                     });
 
                 // get index of stock
-                var i = stocks.stocks.indexOf(arguments[0]);
+                let i = stocks.stocks.indexOf(arguments[0]);
+                let sellableUnits;
 
-                var totalCost = parseFloat(currPrice) * arguments[1];
+                // Validate unit amount passed as argument
+                if (parseInt(stocks.amount[i]) < parseInt(arguments[1])) {
+                    console.log(stocks.amount[i]);
+                    receivedMessage.channel.send("Trying to sell more units than you have, selling max amount instead");
+                    sellableUnits = stocks.amount[i];
+                } else {
+                    sellableUnits = arguments[1];
+                }
+
+                let totalCost = parseFloat(currPrice) * sellableUnits;
                 receivedMessage.channel.send("```\nSale amount: $" + totalCost.toFixed(2) + "\n```");
 
                 // Update cash reserve
@@ -261,7 +285,7 @@ async function sellCommand(arguments, receivedMessage, author) {
                 receivedMessage.channel.send("```\nBalance after: $" + parseFloat(stocks.cash).toFixed(2) + "\n```");
 
                 // Find stock and alter amount
-                stocks.amount[i] -= arguments[1];
+                stocks.amount[i] -= sellableUnits;
 
                 if (stocks.amount[i] == 0) {
                     stocks.stocks.splice(i, 1);
@@ -335,7 +359,7 @@ async function getUser(author, receivedMessage) {
         if (user.stocks.length === 0) {
             receivedMessage.channel.send("```\nPortfolio is currently empty. Buy a stock.\n```");
             // send total position
-            receivedMessage.channel.send("```\nTotal Position: $" + totalPosition + "\n```");
+            receivedMessage.channel.send("```\nTotal Position: $" + parseFloat(totalPosition).toFixed(2) + "\n```");
         } else {
             receivedMessage.channel.send("```\nStock : Units : Value : Profit/Loss\n```");
 
@@ -380,7 +404,7 @@ function leaderboard(receivedMessage) {
         // Iterate and print
         while (!result.done) {
             receivedMessage.channel.send("```fix\nUser: " + result[0].username +
-                "\nCash: $" + result[1].cash.toFixed(2) + "```\n");
+                "\nCash: $" + parseFloat(result[1].cash).toFixed(2) + "```\n");
 
             for (var i = 0; i < result[1].stocks.length; i++) {
                 receivedMessage.channel.send("```fix\nStock: " + result[1].stocks[i] +
@@ -406,16 +430,17 @@ function helpCommand(arguments, receivedMessage) {
     if (arguments.length > 0) {
         receivedMessage.channel.send("It looks like you might need help with " + arguments);
     } else {
-        receivedMessage.channel.send("**Here is the list of my commands:**\n" +
-            "```css\n[!play] - Registers yourself to play the game.\n```" +
+        receivedMessage.channel.send("**Here are my commands (case sensitive):**\n" +
+            "```css\n[!play] - Registers yourself to buy/sell stocks.\n```" +
             "```css\n[!help] - Provides my list of commands.\n```" +
             "```css\n[!stock ticker] - Provides current price and daily % change for your chosen stock. i.e.: !stock AAPL\n```" +
             "```css\n[!stock ticker details] - Provides current price, daily % and extra details for your chosen stock. i.e.: !stock AMZN details\n```" +
             "```css\n[!buy ticker xUnits] - Buys the specified amount of your chosen stock. i.e.: !buy GME x25\n```" +
             "```css\n[!sell ticker xUnits] - Sells the specified amount of your chosen stock. i.e.: !sell AMC x100\n```" +
+            "```css\n[!me] - Gives an overview of your portfolio\n```" +
             "```css\n[!chart ticker] - Provides a screenshot of the intraday stock history. i.e.: !chart TSLA\n```" +
             "```css\n[!money] - Gives a user $25,000 USD for no reason\n```" +
-            "```css\n[!leaderboard] - **NOT ORDERED** Lists the top 10 users in descending value of portfolio\n```" +
+            "```css\n[!leaderboard] - WORK IN PROG! Lists the top 10 users in descending order (cash + stocks)\n```" +
             "```css\n[!sourcecode] - Link to the source code\n```");
     }
 };
