@@ -191,7 +191,7 @@ async function buyCommand(arguments, receivedMessage, author) {
     if (userMap.has(author)) {
         try {
             receivedMessage.channel.send("Buying " + arguments[1] + " of " + arguments[0] +
-                ".\n```diff\n- Please wait for 'Purchase Complete'!\n```");
+                ".\n```fix\nPlease wait for 'Purchase Complete'!\n```");
             // remove the 'x' in 'x5' for example
             arguments[1] = arguments[1].substr(1);
 
@@ -205,29 +205,36 @@ async function buyCommand(arguments, receivedMessage, author) {
 
             let totalCost = currPrice * arguments[1];
 
-            // Update cash reserve
-            receivedMessage.channel.send("```\nTotal cost of purchase: $" + totalCost.toFixed(2) + "\n```");
-            receivedMessage.channel.send("```\nBalance before: $" + parseFloat(stocks.cash).toFixed(2) + "\n```");
+            // Check if user can even afford the purchase
+            if (totalCost > stocks.cash) {
+                receivedMessage.channel.send("```fix\nThe total purchase price: $" + totalCost + " is greater than your cash reserve: $" + stocks.cash + ". Please try again.\n```");
 
-            stocks.cash = stocks.cash - totalCost;
-
-            receivedMessage.channel.send("```\nBalance after: $" + parseFloat(stocks.cash).toFixed(2) + "\n```");
-
-            // Push stock ticker + amount to user arrays
-            // Stock not already in portfolio
-            if (!stocks.stocks.includes(arguments[0])) {
-                stocks.stocks.push(arguments[0]);
-                stocks.amount.push(arguments[1]);
-
-                // Stock already in portfolio, increment
             } else {
-                var i = stocks.stocks.indexOf(arguments[0]);
-                var initial = parseInt(stocks.amount[i]);
-                var additional = parseInt(arguments[1]);
-                stocks.amount[i] = initial + additional;
-            }
 
-            receivedMessage.channel.send("```fix\nPurchase complete.\n```");
+                // Update cash reserve
+                receivedMessage.channel.send("```\nTotal cost of purchase: $" + totalCost.toFixed(2) + "\n```");
+                receivedMessage.channel.send("```\nBalance before: $" + parseFloat(stocks.cash).toFixed(2) + "\n```");
+
+                stocks.cash = stocks.cash - totalCost;
+
+                receivedMessage.channel.send("```\nBalance after: $" + parseFloat(stocks.cash).toFixed(2) + "\n```");
+
+                // Push stock ticker + amount to user arrays
+                // Stock not already in portfolio
+                if (!stocks.stocks.includes(arguments[0])) {
+                    stocks.stocks.push(arguments[0]);
+                    stocks.amount.push(arguments[1]);
+
+                    // Stock already in portfolio, increment
+                } else {
+                    var i = stocks.stocks.indexOf(arguments[0]);
+                    var initial = parseInt(stocks.amount[i]);
+                    var additional = parseInt(arguments[1]);
+                    stocks.amount[i] = initial + additional;
+                }
+
+                receivedMessage.channel.send("```fix\nPurchase complete.\n```");
+            }
 
         } catch (err) {
             console.log(err);
@@ -247,7 +254,7 @@ async function sellCommand(arguments, receivedMessage, author) {
     if (userMap.has(author)) {
         try {
             receivedMessage.channel.send("Selling " + arguments[1] + " of " + arguments[0] +
-                ".\n```diff\n- Please wait for 'Sale Complete'!\n```");
+                ".\n```fix\nPlease wait for 'Sale Complete'!\n```");
             // remove the 'x' in 'x5' for example
             arguments[1] = arguments[1].substr(1);
 
