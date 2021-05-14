@@ -8,7 +8,6 @@ var userMap;
 var general;
 var stonks;
 
-
 // BOT on ready
 client.on('ready',
     () => {
@@ -114,7 +113,7 @@ function stockCommand(arguments, receivedMessage) {
     if (arguments.length == 1 || arguments[1] == "details") {
         var ticker = arguments[0];
         // IEX GET call
-        https.get('https://cloud.iexapis.com/stable/stock/' + ticker + '/quote?token=pk_dbe7d8fdde6744a6bed42869ba27f111 ', (resp) => {
+        https.get('https://cloud.iexapis.com/stable/stock/' + ticker + '/quote?token=pk_dbe7dredacted ', (resp) => {
 
             let data = '';
             resp.on('data', (chunk) => {
@@ -167,7 +166,7 @@ function stockCommand(arguments, receivedMessage) {
 
 // Chart command
 async function chartCommand(arguments, receivedMessage) {
-    receivedMessage.channel.send("```diff\n+ ...Loading... +\n```");
+    receivedMessage.channel.send("```fix\n...Please wait...\n```");
     // Launch browser
     const browser = await puppeteer.launch();
 
@@ -180,7 +179,7 @@ async function chartCommand(arguments, receivedMessage) {
 
     await browser.close();
 
-    receivedMessage.channel.send("```fix\n1-Day History for: " + arguments + "\n```", { files: [screenshot] });
+    receivedMessage.channel.send("1-Day History for: " + arguments, { files: [screenshot] });
 }
 
 // !buy
@@ -193,7 +192,9 @@ async function buyCommand(arguments, receivedMessage, author) {
             receivedMessage.channel.send("Buying " + arguments[1] + " of " + arguments[0] +
                 ".\n```fix\nPlease wait for 'Purchase Complete'!\n```");
             // remove the 'x' in 'x5' for example
-            arguments[1] = arguments[1].substr(1);
+            if (arguments[1].indexOf("x") > -1) {
+                arguments[1] = arguments[1].substr(1);
+            }
 
             var stocks = userMap.get(author);
 
@@ -210,7 +211,7 @@ async function buyCommand(arguments, receivedMessage, author) {
                 receivedMessage.channel.send("```fix\nThe total purchase price: $" + totalCost + " is greater than your cash reserve: $" + stocks.cash + ". Please try again.\n```");
 
             } else {
-
+                receivedMessage.channel.send("```\nCost per unit: $" + currPrice + "\n```");
                 // Update cash reserve
                 receivedMessage.channel.send("```\nTotal cost of purchase: $" + totalCost.toFixed(2) + "\n```");
                 receivedMessage.channel.send("```\nBalance before: $" + parseFloat(stocks.cash).toFixed(2) + "\n```");
@@ -245,7 +246,6 @@ async function buyCommand(arguments, receivedMessage, author) {
     }
 }
 
-
 // !sell
 // arguments[0] = ticker, [1] = amount
 async function sellCommand(arguments, receivedMessage, author) {
@@ -256,7 +256,9 @@ async function sellCommand(arguments, receivedMessage, author) {
             receivedMessage.channel.send("Selling " + arguments[1] + " of " + arguments[0] +
                 ".\n```fix\nPlease wait for 'Sale Complete'!\n```");
             // remove the 'x' in 'x5' for example
-            arguments[1] = arguments[1].substr(1);
+            if (arguments[1].indexOf("x") > -1) {
+                arguments[1] = arguments[1].substr(1);
+            }
 
             var stocks = userMap.get(author);
 
@@ -281,6 +283,7 @@ async function sellCommand(arguments, receivedMessage, author) {
                     sellableUnits = arguments[1];
                 }
 
+                receivedMessage.channel.send("```\nCost per unit: $" + currPrice + "\n```");
                 let totalCost = parseFloat(currPrice) * sellableUnits;
                 receivedMessage.channel.send("```\nSale amount: $" + totalCost.toFixed(2) + "\n```");
 
@@ -298,7 +301,6 @@ async function sellCommand(arguments, receivedMessage, author) {
                     stocks.stocks.splice(i, 1);
                     stocks.amount.splice(i, 1);
                 }
-
                 receivedMessage.channel.send("```fix\nSale complete.\n```");
 
             } else {
@@ -329,6 +331,7 @@ function addUser(author, receivedMessage) {
     var portfolio = {
         stocks: [],
         amount: [],
+        purchasePrice: [],
         cash: "50000"
     };
 
@@ -339,7 +342,6 @@ function addUser(author, receivedMessage) {
         userMap.set(author, portfolio)
         receivedMessage.channel.send("You have been registered. Starting cash reserve is $50,000 USD. Spend wisely.");
     }
-
 }
 
 // Get user - for '!me' command
@@ -381,6 +383,8 @@ async function getUser(author, receivedMessage) {
                 receivedMessage.channel.send("```\n" + user.stocks[i].toUpperCase() + " : " + user.amount[i] +
                     " : $" + (parseFloat(results[i] * user.amount[i]).toFixed(2)) + " : $ not done" + "\n```");
 
+                console.log("Purchase Price: " + user.stocks.purchasePrice);
+
             }
             // Tally total position
             for (i = 0; i < results.length; i++) {
@@ -397,7 +401,7 @@ function getStockPrice(ticker) {
     // return GET result
     return fetch('https://cloud.iexapis.com/stable/stock/' +
         ticker +
-        '/quote/latestPrice?token=pk_dbe7d8fdde6744a6bed42869ba27f111 ')
+        '/quote/latestPrice?token=pk_dbe7dredact ')
         .then(res => res.json());
 }
 
@@ -428,11 +432,12 @@ function leaderboard(receivedMessage) {
     }
 }
 
+// !sourcecode command
 function sourcecode(receivedMessage) {
     receivedMessage.channel.send("https://github.com/bwhitely/DiscordStockBot/blob/main/bot.js");
 }
 
-// Help command - for '!help' command
+// !help command
 function helpCommand(arguments, receivedMessage) {
     if (arguments.length > 0) {
         receivedMessage.channel.send("It looks like you might need help with " + arguments);
